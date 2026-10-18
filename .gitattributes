@@ -1,0 +1,11 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.prop text eol=lf
+*.ps1 text eol=lf
+*.rs text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.lock text eol=lf

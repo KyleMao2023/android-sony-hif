@@ -1,0 +1,36 @@
+# Local device evidence, private samples and reverse-engineering work.
+/heic-android-audit/*
+!/heic-android-audit/Invoke-AdbRead.ps1
+!/heic-android-audit/Copy-AdbReadFile.ps1
+/creators-app-audit/
+/.tools/
+/.work/
+/.codex/
+/.agents/
+/sony-heif-module/diagnostics/
+/sony-heif-module/docs/evidence/
+/sony-heif-module/docs/evidence-*/
+
+# Outputs stay local; release ZIPs can be attached to GitHub Releases later.
+**/target/
+**/build/
+**/dist/
+*.exe
+*.so
+*.o
+*.apk
+*.apks
+*.dex
+*.zip
+*.tar.gz
+*.HIF
+*.hif
+*.heic
+*.HEIC
+*.ppm
+*.log
+*.jks
+*.keystore
+local.properties
+.DS_Store
+Thumbs.db

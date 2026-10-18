@@ -1,0 +1,4 @@
+{
+  global: zygisk_module_entry; sony_heif_create_decoder; __cfi_check;
+  local: *;
+};

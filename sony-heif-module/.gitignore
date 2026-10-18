@@ -1,0 +1,4 @@
+/rust/target/
+/build/
+/dist/
+/tests/*.exe
