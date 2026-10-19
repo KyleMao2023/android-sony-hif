@@ -15,11 +15,11 @@ LSPosed 加载目标主进程后，在 Application.attach 获得 Context，以 P
 
 功能钩子只改变下列输入：
 
-- `PtpPullItem.canCopy()` 与 `PtpPullFileToTransfer.canCopy()`：原返回值保持；仅当实际格式名为 HEIF 时允许复制。JPEG、RAW、MP4 和未知格式保留原行为，不伪装成 JPEG/iOS，也不改变 Android 型号/版本。
+- `PtpPullItem.canCopy()` 与 `PtpPullFileToTransfer.canCopy()`：原返回值保持；仅当实际格式名为 HEIF 时允许复制。文件级对象还必须由确切的手动 `PtpPullItem.getFilesToTransfer()` 生成，以弱引用按身份记录，排除自动导入生成的同类对象。JPEG、RAW、MP4 和未知格式保留原行为，不伪装成 JPEG/iOS，也不改变 Android 型号/版本。
 - `Copy$CopyContentRunnable.prepareDownloadContent()`：仅对上述两类 Wi-Fi HEIF 条目，跳过提前拒绝分支，调用同一个原缩略图回调和后续下载流程。USB/MTP、推送条目及其他格式仍执行原方法。
-- 下载原图：对上述 Wi-Fi HEIF 条目创建 `MtpObjectDownloader` 时，仅将该次的图像尺寸参数设置为 Original，防止全局 2M 偏好导致传入预览；不保存或修改全局偏好。
+- 下载原图：仅在上述 Wi-Fi HEIF 条目的下载 Runnable 内，让两种尺寸读取返回 Original，使调用者保存的尺寸、回调、下载器和实际下载分支一致；不保存或修改全局偏好。作用域按线程并支持嵌套和异常清理。3.5.0 两个确切 PTP 类的 `shouldDownloadScn()` 均返回 false，不可选尺寸分支原本就取原图。
 
-枚举按名称识别，避免把 HEIF 伪装成其他格式。钩子回调异常时记录错误并保留原调用；已开始的异步流程不能在异常后重复启动。
+枚举按名称识别，避免把 HEIF 伪装成其他格式。创建所需回调前发生异常则记录错误并保留原调用；已开始后使用一次性回调保护，使成功、失败或同步异常最多进入一次后续下载，不能重复启动。
 
 ## 构建与依赖
 
@@ -27,7 +27,7 @@ LSPosed 加载目标主进程后，在 Application.attach 获得 Context，以 P
 
 ## 验收
 
-- 主机测试：目标包/主进程/精确版本约束；只开放两种 PTP 条目的 HEIF；其他格式/USB/推送保持；异常回退、重复初始化、安装失败撤销，以及每次 HEIF Original 参数。
+- 主机测试：目标包/主进程/精确版本约束；手动条目与文件来源；自动父条目展开后仍拒绝；其他格式/USB/推送保持；异常回退、重复初始化、每处安装失败撤销；2M 偏好下实际选择原图入口、回调/下载器尺寸一致，以及作用域清理/隔离。
 - 构建检查：APK 签名、作用域/入口元数据、最小权限和编译期 API 未打包；Zygisk 的包名选择测试、现有测试与 ZIP/ELF 检查通过。
 - 独立真机：新解码模块经真实 AImageDecoder 处理三张样片，回退/注册探针通过。LSPosed 已激活及目标进程钩子成功需要实际日志验证，不能从守护进程存在推断。
 - 用户激活后：Wi-Fi 浏览出现 HEIF 选择框；导入完整原图，后缀和文件大小正确，有条件时与相机卡原文件核对 SHA-256；三张原图可查看细节；JPEG/RAW/MP4 与取消/断连正常。

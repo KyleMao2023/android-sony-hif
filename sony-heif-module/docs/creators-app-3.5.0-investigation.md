@@ -39,6 +39,12 @@ USB 的 `mtp.mtpobject.MtpItem.canCopy()` 还检查相机端的 `NON_TRANSFERABL
 
 这些证据说明应用内部保留了 HEIF 识别、组包与入库代码，使定点解除拦截有可行性。它们还不能替代真实相机上的文件传输、完整字节与打开原图验收。
 
+## 实现审查补充
+
+`Copy$CopyContentRunnable$$ExternalSyntheticLambda0.run()` 将尺寸保存到局部变量，再创建下载回调和 `MtpObjectDownloader`，最后依该局部变量选择 `downloadFile()` 或 `downloadScreennail()`。只改下载器构造参数不能改变已经保存的 2M 分支，可能将预览当成原图。实现改为在该次合格条目的 Runnable 作用域中覆盖尺寸读取结果，三处保持一致，全局偏好不写入。
+
+`PtpSimpleDifferencePullItem.getFilesToTransfer()` 也会生成普通的 `PtpPullFileToTransfer`。仅排除自动父类无法限制展开后的文件，故实现要求文件实例具有手动父条目来源。来源用弱引用和对象身份记录，不依赖应用可能重载的相等比较。两项缺陷均有先失败后通过的主机回归测试。
+
 ## 选定的补丁方向
 
 用户确认：现有 Zygisk 模块增加 Creators' App 主进程；另做独立 LSPosed 模块，仅在 3.5.0 上解除 Wi-Fi 手动导入原始 HIF 的格式限制。保留官方 APK、应用数据和原始文件，其他格式继续调用原实现。只交付可安装产物，不自动激活、重启或操控相机。

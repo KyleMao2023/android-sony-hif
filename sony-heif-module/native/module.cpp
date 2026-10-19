@@ -5,6 +5,7 @@
 #include <dlfcn.h>
 #include "vendor/zygisk.hpp"
 #include "router.h"
+#include "target_process.h"
 
 namespace {
 HeifFactory originalFactory=nullptr;
@@ -15,7 +16,7 @@ public:
     void preAppSpecialize(zygisk::AppSpecializeArgs* args)override{
         if(args->nice_name){
             const char* name=env_->GetStringUTFChars(args->nice_name,nullptr);
-            if(name){selected_=!std::strcmp(name,"com.miui.gallery")||!std::strcmp(name,"com.tencent.mm");
+            if(name){selected_=isTargetProcess(name);
                 env_->ReleaseStringUTFChars(args->nice_name,name);}
         }
         if(!selected_)api_->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
