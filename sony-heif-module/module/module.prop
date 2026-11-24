@@ -1,6 +1,6 @@
 id=sony_heif_entry
 name=Sony HEIF Entry (experimental)
-version=0.1.4
-versionCode=5
+version=0.1.5
+versionCode=6
 author=Local HEIF module project
 description=Sony heix/HIF software decoding at the system HEIF entry for Gallery and WeChat. ARM64 Android 16 prototype; requires Zygisk API 4+.

@@ -1,4 +1,7 @@
 # Local device evidence, private samples and reverse-engineering work.
+/gallery-sony-exif-lsposed/
+/docs/
+/.metals/
 /heic-android-audit/*
 !/heic-android-audit/Invoke-AdbRead.ps1
 !/heic-android-audit/Copy-AdbReadFile.ps1

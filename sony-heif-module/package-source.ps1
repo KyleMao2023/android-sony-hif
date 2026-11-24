@@ -10,7 +10,7 @@ foreach($dir in @('native','tests','tools','module','docs','rust\src','rust\vend
 Get-ChildItem -LiteralPath $projectRoot -File | Where-Object {$_.Name -match '\.(md|ps1)$|^(LICENSE|NOTICE)'} | ForEach-Object {$files.Add($_)}
 foreach($name in @('rust\Cargo.toml','rust\Cargo.lock')){$files.Add((Get-Item -LiteralPath (Join-Path $projectRoot $name)))}
 Get-ChildItem -LiteralPath (Join-Path $projectRoot 'rust\vendor\heic-rs') -File | Where-Object {$_.Name -match '^Cargo.toml$|^README|^(LICENSE|NOTICE)'} | ForEach-Object {$files.Add($_)}
-$selected=@($files | Where-Object {$_.Extension -in @('.cpp','.h','.hpp','.map','.rs','.toml','.lock','.md','.ps1','.sh','.prop','.txt','.json') -or $_.Name -match '^(LICENSE|NOTICE|skip_mount)'} | Sort-Object FullName -Unique)
+$selected=@($files | Where-Object {$_.Extension -in @('.cpp','.h','.hpp','.map','.rs','.toml','.lock','.md','.ps1','.sh','.prop','.txt','.json','.java') -or $_.Name -match '^(LICENSE|NOTICE|skip_mount)'} | Sort-Object FullName -Unique)
 $dist=Join-Path $projectRoot 'dist'
 [IO.Directory]::CreateDirectory($dist)|Out-Null
 $zip=Join-Path $dist ('sony-heif-entry-'+$version+'-source.zip')

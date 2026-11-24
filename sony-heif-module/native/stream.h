@@ -5,6 +5,8 @@
 bool isSonyHeifHeader(const uint8_t* data,size_t length);
 class ReplayStream final:public HeifStream {
 public:
+    // Probe only the first supported ftyp (8-byte header, then <=128 bytes).
+    // Ordinary 24/32-byte boxes stay within the platform's rewind window.
     explicit ReplayStream(HeifStream* source);
     const std::vector<uint8_t>& header()const{return prefix_;}
     // Platform consumers must receive their own original object/vtable.

@@ -15,16 +15,17 @@ bool identity=false,acceptInit=true;
 std::vector<uint8_t> observed;
 class Input final:public HeifStream {
 public:
-    Input(std::vector<uint8_t> data,int mode):data_(std::move(data)),mode_(mode){}
+    Input(std::vector<uint8_t> data,int mode,size_t maxRead=SIZE_MAX):data_(std::move(data)),mode_(mode),maxRead_(maxRead){}
     ~Input()override{++destroyed;}
     size_t read(void* dst,size_t n)override{
-        n=std::min(n,data_.size()-pos_);if(dst&&n)std::memcpy(dst,data_.data()+pos_,n);pos_+=n;return n;
+        n=std::min({n,data_.size()-pos_,maxRead_});if(dst&&n)std::memcpy(dst,data_.data()+pos_,n);pos_+=n;
+        furthest_=std::max(furthest_,pos_);return n;
     }
-    bool rewind()override{if(mode_!=1)return false;pos_=0;return true;}
-    bool seek(size_t n)override{if(mode_!=2||n>data_.size())return false;pos_=n;return true;}
+    bool rewind()override{if(mode_!=1&&(mode_!=3||furthest_>32))return false;pos_=0;return true;}
+    bool seek(size_t n)override{if((mode_!=2&&(mode_!=4||furthest_>32))||n>data_.size())return false;pos_=n;return true;}
     bool hasLength()const override{return false;}
     size_t getLength()const override{return 0;}
-private:std::vector<uint8_t>data_;size_t pos_=0;int mode_;
+private:std::vector<uint8_t>data_;size_t pos_=0,furthest_=0;int mode_;size_t maxRead_;
 };
 class Original final:public HeifDecoder {
 public:
@@ -87,5 +88,53 @@ int main(){
         CHECK(initCalls==1&&identity&&observed.empty());
     }
     CHECK(destroyed==1);
+    // A stream can rewind during type detection, then lose that capability
+    // after reading beyond Skia's 32-byte front buffer (the actual regression).
+    const std::vector<uint8_t> phone={0,0,0,24,'f','t','y','p','h','e','i','c',0,0,0,0,'m','i','f','1','h','e','i','c'};
+    std::vector<std::vector<uint8_t>> ordinaryHeaders={phone};
+    auto atBoundary=phone;atBoundary[3]=32;atBoundary.insert(atBoundary.end(),{'t','e','s','t','t','e','s','t'});ordinaryHeaders.push_back(atBoundary);
+    auto heix=phone;heix[11]='x';ordinaryHeaders.push_back(heix); // heix alone is not Sony.
+    for(uint32_t size:{0u,1u,12u,18u,129u,132u,0x7fffffffu}){
+        auto bad=phone;bad[0]=uint8_t(size>>24);bad[1]=uint8_t(size>>16);bad[2]=uint8_t(size>>8);bad[3]=uint8_t(size);
+        ordinaryHeaders.push_back(bad);
+    }
+    auto notFtyp=phone;notFtyp[4]='x';ordinaryHeaders.push_back(notFtyp);
+    for(const auto& header:ordinaryHeaders){
+        auto payload=header;payload.resize(300,0x5a);
+        for(int mode:{3,4})for(size_t maxRead:{size_t(1),size_t(5),SIZE_MAX}){
+            destroyed=initCalls=0;identity=false;acceptInit=true;
+            {
+                std::unique_ptr<HeifDecoder>decoder(sony_heif_create_decoder(factory));
+                expected=new Input(payload,mode,maxRead);
+                CHECK(decoder->init(expected,nullptr));
+                CHECK(initCalls==1&&identity&&observed==payload&&destroyed==0);
+            }
+            CHECK(destroyed==1);
+        }
+    }
+    // Incomplete ftyp/short streams must also preserve the bytes and ownership.
+    auto truncated=phone;truncated[3]=40;
+    for(size_t length:{size_t(0),size_t(5),size_t(8),size_t(24)}){
+        auto payload=truncated;payload.resize(length);
+        destroyed=initCalls=0;identity=false;acceptInit=true;
+        {
+            std::unique_ptr<HeifDecoder>decoder(sony_heif_create_decoder(factory));
+            expected=new Input(payload,3,1);CHECK(decoder->init(expected,nullptr));
+            CHECK(initCalls==1&&identity&&observed==payload);
+        }
+        CHECK(destroyed==1);
+    }
+    // Longer ordinary boxes still retain the existing seekable fallback.
+    for(uint8_t size:{uint8_t(40),uint8_t(128)}){
+        auto payload=phone;payload.resize(300,0x5a);payload[3]=size;
+        destroyed=initCalls=0;identity=false;
+        {
+            std::unique_ptr<HeifDecoder>decoder(sony_heif_create_decoder(factory));
+            expected=new Input(payload,1);CHECK(decoder->init(expected,nullptr));
+            CHECK(initCalls==1&&identity&&observed==payload);
+        }
+        CHECK(destroyed==1);
+    }
     std::puts("fallback identity, replay, rewind/seek and ownership tests passed");
+    std::puts("ordinary HEIF with a 32-byte rewind window and short reads passed");
 }

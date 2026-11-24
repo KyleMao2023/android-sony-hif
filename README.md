@@ -1,26 +1,51 @@
-# Android Sony HEIF decoder
+# Android Sony HEIF Suite
 
-通过系统 HEIF 入口为 Android 上的 Sony HIF 原图提供软件解码的实验性 Zygisk 模块，面向 Android 16 ARM64。
+[简体中文](README.zh-CN.md)
 
-当前基线 **0.1.3**：支持样片中的 10-bit 4:2:0、4:2:2、4:2:2 HLG，同图共享解码结果，不同图片有界排队。用户已确认相册和微信的实际浏览/发送测试基本通过；这不代表所有 Android 设备或应用路径都已覆盖。
+Enable **Sony Creators' App Wi-Fi HEIF transfer** and **system-level Sony `.HIF` viewing & sharing** (Gallery, WeChat, Creators' App) on rooted Android devices, without replacing stock apps or altering original camera files.
 
-实验性扩展：Sony HEIF Entry **0.1.4** 增加 Creators' App 系统解码入口；配套 [Creators HEIF Wi-Fi](creators-heif-lsposed/README.md) 为独立 LSPosed 模块，定点解除 3.5.0 的手动 Wi-Fi HEIF 导入限制。实际相机 GUI 验收单独记录。
+## Tested Environment
 
-- [模块说明、限制、安装与回退](sony-heif-module/README.md)
-- [构建脚本](sony-heif-module/build.ps1)、[测试脚本](sony-heif-module/test.ps1)
-- [0.1.3 设计与验证](sony-heif-module/docs/diagnosis-0.1.3.md)
-- [0.1.4 Creators' App 扩展与验收记录](sony-heif-module/docs/diagnosis-0.1.4.md)
-- [第三方来源与许可](sony-heif-module/THIRD_PARTY.md)、[项目许可](sony-heif-module/LICENSE)
+- **Device**: Xiaomi 14 Pro (`ARM64`)
+- **OS**: Android 16 / HyperOS 3.0.308
+- **Root / Hook**: KernelSU + Zygisk Next + LSPosed
+- **Target Apps**: Xiaomi Gallery, WeChat, Sony Creators' App `3.5.0`
+
+## Components
+
+| Component | Type | What It Does | Docs |
+| --- | --- | --- | --- |
+| **Sony HEIF Entry** (`0.1.5`) | Zygisk Module | Hooks `libhwui.so` `createHeifDecoder()` in Gallery, WeChat, and Creators' App; software-decodes Sony `heix + SHIF` `.HIF` (10-bit 4:2:0 / 4:2:2 / 4:2:2 HLG) and delegates standard phone HEIC back to the system decoder. | [English](sony-heif-module/README.md) · [中文](sony-heif-module/README.zh-CN.md) |
+| **Creators HEIF Wi-Fi** (`0.1.0`) | LSPosed Module | Unlocks manual Wi-Fi HEIF selection and original-file transfer in Sony Creators' App `3.5.0` without altering global settings. | [English](creators-heif-lsposed/README.md) · [中文](creators-heif-lsposed/README.zh-CN.md) |
+
+## Quick Start (Prebuilt Releases)
+
+1. Flash `sony-heif-entry-0.1.5-arm64.zip` in Magisk or KernelSU (Zygisk enabled).
+2. Install `creators-heif-wifi-0.1.0.apk`, enable **Creators HEIF Wi-Fi** in LSPosed, and set its scope exclusively to **Creators' App (`jp.co.sony.ips.portalapp`)**.
+3. Reboot or force-stop and relaunch Gallery, WeChat, and Creators' App so the new processes load the modules.
+4. Connect your Sony camera via Creators' App Wi-Fi, browse photos manually, and download `.HIF` files as original files. You can now view and share them directly in Gallery and WeChat.
+
+## Building from Source
+
+Both modules include PowerShell build and verification scripts (`build.ps1`, `test.ps1`, `verify-package.ps1`):
 
 ```powershell
+# 1. Native Zygisk decoder module
 cd sony-heif-module
-.\build.ps1
+.\build.ps1 -AndroidSdk "<path-to-android-sdk>" -RustToolchain "<path-to-rust-toolchain>"
 .\test.ps1
-.\verify-package.ps1
+.\verify-package.ps1 -AndroidSdk "<path-to-android-sdk>"
+
+# 2. Creators' App LSPosed module
+cd ..\creators-heif-lsposed
+.\test.ps1 -AndroidSdk "<path-to-android-sdk>"
+.\build.ps1 -AndroidSdk "<path-to-android-sdk>"
+.\verify-package.ps1 -AndroidSdk "<path-to-android-sdk>"
 ```
 
-现有脚本默认使用本机 `D:\Code\Android` 下的 NDK 和 GNU Rust 工具链；迁移机器时需按脚本参数配置。完整样片测试需要自行提供样片，参见模块说明。
+See each module's README for toolchain details, architecture notes, and customization instructions.
 
-Git 跟踪源码、许可证、构建工具和分析文档。相机照片、设备原始日志/故障报告、APK/反编译输出和构建目录保留在本地并被忽略；文档引用的 `docs/evidence*` 是本地验收记录，未纳入仓库。
+## License
 
-本地 `.git` 已初始化为 `main`。若当前受限执行环境不能写入 `.git`，可在普通 PowerShell 中运行 `./Initialize-Repository.ps1`，它会检查待提交路径、创建首次提交及 `v0.1.3` 标签；已有提交时只显示状态。此脚本不改全局 Git 配置，不设置远程或推送。
+- [sony-heif-module/LICENSE](sony-heif-module/LICENSE) (MIT) · [Third-party notices](sony-heif-module/THIRD_PARTY.md)
+- [creators-heif-lsposed/LICENSE](creators-heif-lsposed/LICENSE) (MIT) · [Third-party notices](creators-heif-lsposed/THIRD_PARTY.md)

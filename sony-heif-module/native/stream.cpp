@@ -16,14 +16,26 @@ bool isSonyHeifHeader(const uint8_t* data,size_t length){
 }
 ReplayStream::ReplayStream(HeifStream* source):source_(source){
     if(!source_)return;
-    prefix_.resize(128);
     size_t got=0;
-    while(got<prefix_.size()){
-        size_t n=source_->read(prefix_.data()+got,prefix_.size()-got);
-        if(!n || n>prefix_.size()-got)break;
-        got+=n;
-    }
-    prefix_.resize(got);sourcePosition_=got;
+    auto readPrefix=[&](size_t target){
+        prefix_.resize(target);
+        while(got<target){
+            size_t n=source_->read(prefix_.data()+got,target-got);
+            if(!n || n>target-got)break;
+            got+=n;
+        }
+        prefix_.resize(got);sourcePosition_=got;
+        return got==target;
+    };
+    // BitmapFactory's InputStream adapter can only rewind within a small
+    // front buffer. Do not consume 128 bytes when an ordinary ftyp is 24.
+    if(!readPrefix(8) || std::memcmp(prefix_.data()+4,"ftyp",4))return;
+    uint32_t size=(uint32_t(prefix_[0])<<24)|(uint32_t(prefix_[1])<<16)|
+        (uint32_t(prefix_[2])<<8)|prefix_[3];
+    if(size<16 || size>128 || (size-16)%4)return;
+    // Sony's 40-byte ftyp has SHIF after byte 32, so retain the complete
+    // supported box rather than globally truncating the probe to 32 bytes.
+    readPrefix(size);
 }
 std::unique_ptr<HeifStream> ReplayStream::takeOriginalFromStart(){
     if(!source_)return {};
